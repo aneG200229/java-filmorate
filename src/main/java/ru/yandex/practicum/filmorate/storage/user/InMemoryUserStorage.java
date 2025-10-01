@@ -37,7 +37,7 @@ public class InMemoryUserStorage implements UserStorage {
     }
 
     @Override
-    public User update(User newUser){
+    public User update(User newUser) {
         if (newUser.getId() == null) {
             throw new ValidationException("id должен быть введен");
         }
@@ -52,11 +52,11 @@ public class InMemoryUserStorage implements UserStorage {
     }
 
     @Override
-    public void delete(Long id){
+    public void delete(Long id) {
         if (users.remove(id) == null) {
             throw new NotFoundException("Пользователь с id=" + id + " не найден");
         }
-        log.info("удален пользователь id={}",id);
+        log.info("удален пользователь id={}", id);
     }
 
     private void checkName(User user) {
