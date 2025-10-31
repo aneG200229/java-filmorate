@@ -2,7 +2,7 @@
 Template repository for Filmorate project.
 ## Схема базы данных
 
-![Database Schema](database_schema.png)
+![Database Schema](/docs/database_schema.png)
 
 ### Описание таблиц
 
