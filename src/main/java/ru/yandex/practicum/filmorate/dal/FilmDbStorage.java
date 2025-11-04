@@ -19,7 +19,7 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Collectors;
+
 
 @Repository
 @Qualifier("filmDbStorage")
@@ -83,7 +83,7 @@ public class FilmDbStorage implements FilmStorage {
         }
 
         String query = """
-                INSERT INTO films (name, description, release_date, duration, rating_id) 
+                INSERT INTO films (name, description, release_date, duration, rating_id)
                 VALUES (?, ?, ?, ?, ?)
                 """;
 
@@ -142,8 +142,8 @@ public class FilmDbStorage implements FilmStorage {
         }
 
         String query = """
-                UPDATE films 
-                SET name = ?, description = ?, release_date = ?, duration = ?, rating_id = ? 
+                UPDATE films
+                SET name = ?, description = ?, release_date = ?, duration = ?, rating_id = ?
                 WHERE film_id = ?
                 """;
 
