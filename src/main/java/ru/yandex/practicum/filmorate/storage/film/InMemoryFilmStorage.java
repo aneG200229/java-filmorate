@@ -21,9 +21,9 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
-    public Film findById(Long id) {
-        return Optional.ofNullable(films.get(id))
-                .orElseThrow(() -> new NotFoundException("фильм с id= " + id + " не найден"));
+    public Optional<Film> findById(Long id) {
+        return Optional.ofNullable(Optional.ofNullable(films.get(id))
+                .orElseThrow(() -> new NotFoundException("фильм с id= " + id + " не найден")));
     }
 
     @Override
