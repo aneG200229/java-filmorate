@@ -36,6 +36,7 @@ public class FilmRowMapper implements RowMapper<Film> {
                     mpa.setName(ratingName);
                 }
             } catch (SQLException e) {
+                throw new RuntimeException(e);
             }
 
             film.setMpa(mpa);
