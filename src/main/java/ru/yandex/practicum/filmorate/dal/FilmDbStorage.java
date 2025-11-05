@@ -19,7 +19,7 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.*;
-
+import java.util.stream.Collectors;
 
 @Repository
 @Qualifier("filmDbStorage")
@@ -33,11 +33,16 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public Collection<Film> findAll() {
-        String query = "SELECT * FROM films";
+        String query = """
+                SELECT f.*, fr.rating
+                FROM films f
+                LEFT JOIN film_rating fr ON f.rating_id = fr.rating_id
+                """;
+
         List<Film> films = jdbc.query(query, mapper);
 
         for (Film film : films) {
-            loadFullData(film);
+            loadGenres(film);
         }
 
         return films;
@@ -45,7 +50,12 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public Optional<Film> findById(Long id) {
-        String query = "SELECT * FROM films WHERE film_id = ?";
+        String query = """
+                SELECT f.*, fr.rating
+                FROM films f
+                LEFT JOIN film_rating fr ON f.rating_id = fr.rating_id
+                WHERE f.film_id = ?
+                """;
 
         try {
             Film film = jdbc.queryForObject(query, mapper, id);
@@ -54,7 +64,7 @@ public class FilmDbStorage implements FilmStorage {
                 return Optional.empty();
             }
 
-            loadFullData(film);
+            loadGenres(film);
 
             return Optional.of(film);
 
@@ -74,14 +84,13 @@ public class FilmDbStorage implements FilmStorage {
 
         mpaStorage.findById(film.getMpa().getId())
                 .orElseThrow(() -> new NotFoundException("Рейтинг с id=" + film.getMpa().getId() + " не найден"));
-
+        //Без проверки жанров падают тесты postman
         if (film.getGenres() != null && !film.getGenres().isEmpty()) {
             for (Genre genre : film.getGenres()) {
                 genreStorage.findById(genre.getId())
                         .orElseThrow(() -> new NotFoundException("Жанр с id=" + genre.getId() + " не найден"));
             }
         }
-
         String query = """
                 INSERT INTO films (name, description, release_date, duration, rating_id)
                 VALUES (?, ?, ?, ?, ?)
@@ -99,29 +108,14 @@ public class FilmDbStorage implements FilmStorage {
             return ps;
         }, keyHolder);
 
-
         Number key = keyHolder.getKey();
-        Long filmId = null;
-        if (key != null) {
-            filmId = key.longValue();
-        }
-
-        if (filmId == null) {
+        if (key == null) {
             throw new InternalServerException("Не удалось создать фильм: сгенерированный ключ отсутствует");
         }
+        long filmId = key.longValue();
         film.setId(filmId);
-
-
-        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
-            for (Genre genre : film.getGenres()) {
-                genreStorage.addGenreToFilm(filmId, genre.getId());
-            }
-        }
-
-
-        loadFullData(film);
-
-        return film;
+        saveGenres(film);
+        return findById(filmId).orElseThrow();
     }
 
     @Override
@@ -133,14 +127,6 @@ public class FilmDbStorage implements FilmStorage {
             mpaStorage.findById(film.getMpa().getId())
                     .orElseThrow(() -> new NotFoundException("Рейтинг с id=" + film.getMpa().getId() + " не найден"));
         }
-
-        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
-            for (Genre genre : film.getGenres()) {
-                genreStorage.findById(genre.getId())
-                        .orElseThrow(() -> new NotFoundException("Жанр с id=" + genre.getId() + " не найден"));
-            }
-        }
-
         String query = """
                 UPDATE films
                 SET name = ?, description = ?, release_date = ?, duration = ?, rating_id = ?
@@ -155,18 +141,9 @@ public class FilmDbStorage implements FilmStorage {
                 film.getMpa().getId(),
                 film.getId()
         );
-
         genreStorage.removeAllGenresFromFilm(film.getId());
-
-        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
-            for (Genre genre : film.getGenres()) {
-                genreStorage.addGenreToFilm(film.getId(), genre.getId());
-            }
-        }
-
-        loadFullData(film);
-
-        return film;
+        saveGenres(film);
+        return findById(film.getId()).orElseThrow();
     }
 
     @Override
@@ -178,15 +155,24 @@ public class FilmDbStorage implements FilmStorage {
         }
     }
 
-    private void loadFullData(Film film) {
-
-        if (film.getMpa() != null && film.getMpa().getId() != null) {
-            mpaStorage.findById(film.getMpa().getId())
-                    .ifPresent(film::setMpa);
-        }
-
-
+    private void loadGenres(Film film) {
         List<Genre> genres = genreStorage.findByFilmId(film.getId());
         film.setGenres(genres);
+    }
+
+    private void saveGenres(Film film) {
+        if (film.getGenres() == null || film.getGenres().isEmpty()) {
+            return;
+        }
+
+        List<Genre> uniqueGenres = film.getGenres().stream()
+                .filter(g -> g != null && g.getId() != null)
+                .distinct()  // Убирает дубликаты (если Genre имеет equals/hashCode)
+                .collect(Collectors.toList());
+
+
+        if (!uniqueGenres.isEmpty()) {
+            genreStorage.addGenresToFilm(film.getId(), uniqueGenres);
+        }
     }
 }

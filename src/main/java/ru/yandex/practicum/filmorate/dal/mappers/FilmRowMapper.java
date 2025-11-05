@@ -21,8 +21,6 @@ public class FilmRowMapper implements RowMapper<Film> {
         Date sqlDate = rs.getDate("release_date");
         if (sqlDate != null) {
             film.setReleaseDate(sqlDate.toLocalDate());
-        } else {
-            film.setReleaseDate(null);
         }
 
         film.setDuration(rs.getInt("duration"));
@@ -31,9 +29,16 @@ public class FilmRowMapper implements RowMapper<Film> {
         if (!rs.wasNull()) {
             Mpa mpa = new Mpa();
             mpa.setId(ratingId);
+
+            try {
+                String ratingName = rs.getString("rating");
+                if (ratingName != null) {
+                    mpa.setName(ratingName);
+                }
+            } catch (SQLException e) {
+            }
+
             film.setMpa(mpa);
-        } else {
-            film.setMpa(null);
         }
 
         return film;

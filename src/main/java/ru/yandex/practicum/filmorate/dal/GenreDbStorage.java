@@ -29,7 +29,6 @@ public class GenreDbStorage {
         } catch (EmptyResultDataAccessException e) {
             return Optional.empty();
         }
-
     }
 
     public List<Genre> findByFilmId(long filmId) {
@@ -43,15 +42,17 @@ public class GenreDbStorage {
         return jdbc.query(query, mapper, filmId);
     }
 
-    public void addGenreToFilm(long filmId, int genreId) {
-        String sql = """
-                INSERT INTO film_genres (film_id, genre_id)
-                SELECT ?, ?
-                WHERE NOT EXISTS (
-                    SELECT 1 FROM film_genres WHERE film_id = ? AND genre_id = ?
-                )
-                """;
-        jdbc.update(sql, filmId, genreId, filmId, genreId);
+    public void addGenresToFilm(long filmId, List<Genre> genres) {
+        if (genres == null || genres.isEmpty()) {
+            return;
+        }
+
+        String query = "INSERT INTO film_genres (film_id, genre_id) VALUES (?, ?)";
+
+        jdbc.batchUpdate(query, genres, genres.size(), (ps, genre) -> {
+            ps.setLong(1, filmId);
+            ps.setInt(2, genre.getId());
+        });
     }
 
     public void removeAllGenresFromFilm(long filmId) {
